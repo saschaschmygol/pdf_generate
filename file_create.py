@@ -10,20 +10,24 @@ from file_db import data_person
 
 pdfmetrics.registerFont(TTFont('Times', 'timesnewromanpsmt.ttf'))
 
-def format_date_table(s1, s2, date, CUSTOM_PARAGRAPH_STYLE):              #->список [['', ''], ['', ''], [''..]]
+def format_date_table(s1, s2, date,TAB_PARAGRAPH_STYLE, KALEND_PO_EPIDEM_PAKAZ, NATION_KALENDAR, REGION_KALENDAR):
+    ''' Создание списка данных для заполнения таблицы #->список [['', ''], ['', ''], [''..]] '''
 
     lst_info = [['1' for i in range(5)] for i in range(len(date['date']))]
     for i, n in enumerate(date['date']):
         lst_info[i][0] = n[0]
         lst_info[i][1] = n[1]
+        lst_info[i][2] = REGION_KALENDAR[n[1]]
+        lst_info[i][3] = NATION_KALENDAR[n[1]]
+        lst_info[i][4] = KALEND_PO_EPIDEM_PAKAZ[n[1]]
 
-    stroka_table_words = [[] for i in lst_info] #делаем стиль Paragraph
+    stroka_table_words = [[] for i in lst_info] # делаем стиль Paragraph
     for i, x in enumerate(lst_info):
         for n in x:
-            a = Paragraph(n, CUSTOM_PARAGRAPH_STYLE)
+            a = Paragraph(n, TAB_PARAGRAPH_STYLE)
             stroka_table_words[i].append(a)
 
-    lst_date = [s1, s2]
+    lst_date = [s1, s2]                                # первые 2 строки таблицы
 
     for i in stroka_table_words:
         lst_date.append(i)
@@ -43,8 +47,7 @@ def generate_pdf(date):
                    'Календарь профилактических прививок по эпидемическим показаниям (утвержден Приказом МЗ РФ от 6 декабря 2021 г. N 1122-н)']]
 
     text_top = ['Уведомление о необходимости прохождения иммунизации', f'Уважаемый(-ая) {date['name']} !', f'Уведомляем вас, что в 2024 году ВЫ подлежите иммунизации против : {
-    str(n[1] for n in date['date'])
-    } ',
+    generate_str_vac(date)} ',
                 'Предлагаем вам пройти иммунизацию согласно графику, прописанному в уведомлении, в срок не позднее 1 месяца с начала периода, предложенного в графике'
                 ' по профилактике конкретного заболевания, и предоставить данные старшей медсестре отделения, для дальнейшего планирования последующих этапов иммунизации',
                 'В случае отказа от прохождения иммунизации Работодатель оставляет за собой право отстранять своего сотрудника от работы в рамках действующего законодательства'
@@ -56,13 +59,13 @@ def generate_pdf(date):
     stroka_table_words = [[] for i in list_words]
     for i, x in enumerate(list_words): # первые 2 строки таблицы
         for n in x:
-            a = Paragraph(n, CUSTOM_PARAGRAPH_STYLE)
+            a = Paragraph(n, TAB_PARAGRAPH_STYLE)
             stroka_table_words[i].append(a)
 
     stroka_top = [Paragraph(i, CUSTOM_PARAGRAPH_STYLE) for i in text_top]
     stroka_bot = [Paragraph(i, CUSTOM_PARAGRAPH_STYLE) for i in text_bot] # перед и после таблицы
 
-    lst_date = format_date_table(stroka_table_words[0], stroka_table_words[1], date, CUSTOM_PARAGRAPH_STYLE)
+    lst_date = format_date_table(stroka_table_words[0], stroka_table_words[1], date, TAB_PARAGRAPH_STYLE, KALEND_PO_EPIDEM_PAKAZ, NATION_KALENDAR, REGION_KALENDAR)
 
     table = Table(lst_date, colWidths=col_widths) #создание таблицы и применение стиля
     table.setStyle(STYLE)
@@ -75,6 +78,7 @@ def generate_pdf(date):
     doc.build(content)
 
 if __name__=='__main__':
-    data = data_person(1)
-    generate_pdf(data)
+    date = data_person(1)
+    print(date)
+    generate_pdf(date)
 
