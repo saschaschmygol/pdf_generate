@@ -37,7 +37,7 @@ def format_date_table(s1, s2, date,TAB_PARAGRAPH_STYLE, KALEND_PO_EPIDEM_PAKAZ, 
 def generate_pdf(date):
     doc = SimpleDocTemplate("example_table.pdf", pagesize=A4, topMargin=cm_to_points(1), leftMargin=cm_to_points(1))
 
-    col_widths = [cm_to_points(1.7), cm_to_points(4), cm_to_points(4.5), cm_to_points(4.7),
+    col_widths = [cm_to_points(1.9), cm_to_points(4), cm_to_points(4.5), cm_to_points(4.7),
                   cm_to_points(4.5)]  # ширина колонок
 
     list_words = [['Рекоммендуемый срок', 'Инфекционное заболевание', 'Основание', '', ''],
