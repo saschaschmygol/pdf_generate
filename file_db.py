@@ -2,6 +2,15 @@ import sqlite3
 import datetime
 from pdf_settings_style import MONTH, MONTHS
 
+def age_calculate(date_of_birth): # 2002-01-23
+    bir_date = datetime.datetime.strptime(date_of_birth, '%Y-%m-%d')
+    cur_date = datetime.datetime.now()
+
+    age = cur_date.year - bir_date.year
+
+    if (cur_date.month, cur_date.day) < (bir_date.month, bir_date.day):
+        age -= 1
+    return age
 def check_year(date):
     ''' date 2023-03-21 '''
     lst_data: list = date.split('-')  # выделяем год месяц день
@@ -17,7 +26,7 @@ def check_year(date):
     else:
         return True
 
-def time_vac(date1, date2):
+def time_vac(date1, date2, age):
     vac_type, vac_subtype = date1[0], date1[1]
     next_vac_subtype = ''
     n_weeks = 0
@@ -91,7 +100,7 @@ def time_vac(date1, date2):
         next_vac_subtype = 'RV'
 
     elif vac_type == "Корь":
-        if vac_type == 'V1':
+        if vac_subtype == 'V1':
             n_weeks = date2[vac_type][4]  # 26 недель (6 месяцев) после V
             next_vac_subtype = 'RV'
         if vac_subtype == 'RV':
@@ -133,22 +142,9 @@ def time_vac(date1, date2):
 
 def sort_mounth(date):
     ''' Сортировка месяцев в date в порядке (январь -> декабрь)
-     date['date'] = [['Сентябрь 2023', 'Дизентерия Зонне'], .....]'''
-    if len(date['date']) > 1:
-        i = 0
-        while True:
-            cur_mon = date['date'][i][0].split(' ')
-            next_mon = date['date'][i + 1][0].split(' ') # ['Сентябрь', '2023']
-
-            if MONTHS.index(cur_mon[0]) > MONTHS.index(next_mon[0]):
-                date['date'][i], date['date'][i + 1] = date['date'][i + 1], date['date'][i]
-                i = 0
-            else:
-                i += 1
-            if i == len(date['date']) - 1:
-                break
-    else:
-        pass
+     date['date'] = [['2023-06-10', 'Дизентерия Зонне'], .....]'''
+    sorted_date = sorted(date, key=lambda x: datetime.datetime.strptime(x[0], '%Y-%m-%d'))
+    return sorted_date
 
 def add_time(current_date, weeks_to_add): # дата в формате 2024-02-21, кол-во недель
     ''' Прибавление (weeks_to_add) недель к дате '''
@@ -190,6 +186,10 @@ def data_person(id):
     lst_vac = rows
     print(lst_vac)
 
+    date_of_birth = rows[0][4] #рассчет полных лет
+    age = age_calculate(date_of_birth)
+    print(age)
+
     date = {'name': None, 'date':[]}
     date['name'] = lst_vac[0][0] + ' ' + lst_vac[0][1] + ' ' + lst_vac[0][2] #формируем имя в строку
 
@@ -204,10 +204,16 @@ def data_person(id):
 
     new_lst_vac = list(set(lst_vac_work) & set(lst_vac_priv)) # удаление нестандартных прививок, не отн к списку прививок в сфере раб. (за свой счет и т.д.)
     print(f"new_lst_vac {new_lst_vac}")
+
+    if lst_vac[0][3] == 'Ж':
+        if ('Краснуха' in lst_vac_work) and (('Краснуха' not in new_lst_vac) and age > 25):
+            lst_vac_work.remove('Краснуха') # удаляем краснуху из общего списка если >25 и не был привит
+
     lst_vac_n = [i for  i in lst_vac if i[6] in new_lst_vac]
     print(lst_vac_n)                                          #оставляем только стандартные прививки для дальнейшего планирования
     new_lst_vac_work = list(set(lst_vac_work) - set(lst_vac_priv)) #список прививок для которых нужно начать схему вакцинации
     print(f"new_lst_vac_work {new_lst_vac_work}")
+
 
     cursor.execute(f"SELECT name, V1, V2, V3, RV1, RV FROM Прививка WHERE name IN ({", ".join(f"'{item}'" for item in lst_vac_work)})")
     rows = cursor.fetchall()
@@ -221,21 +227,52 @@ def data_person(id):
         tp: str = n[7] # 'RV'
         disea = n[6]  # 'Грипп'
         dat = n[5] # 2023-02-02
-        print(tp, disea, dat)
+        #print(tp, disea, dat)
         while True:
             lst = []
-            week_add, n_tp = time_vac([disea, tp], date2)
-            new_data = add_time(dat, week_add)
+            week_add, n_tp = time_vac([disea, tp], date2, age) # 4, RV
+            new_data = add_time(dat, week_add) # '2023-09-21'
+            if week_add == 0:
+                break
             if check_year(new_data):
                 lst.append(new_data)
                 lst.append(disea)
-                print(1)
+                #print(1)
                 date['date'].append(lst) # ['2004-', '']
                 dat = new_data
                 tp = n_tp
             else:
                 break
-    #
+
+    for i, n in enumerate(new_lst_vac_work): #если прежде не велась вакцинация
+        tp: str = 'V1' # 'RV'
+        disea = n  # 'Грипп'
+        dat = add_time(datetime.datetime.now().strftime("%Y-%m-%d"), 1)
+
+        lst = []
+        lst.append(dat)
+        lst.append(disea)
+        date['date'].append(lst) # первый раз
+        #print(f"Nachalo {tp, disea, dat}")
+        while True:
+            ls = []
+            week_add, n_tp = time_vac([disea, tp], date2, age) # return (4, RV)
+            #print(f"------- {week_add, n_tp}")
+            new_data = add_time(dat, week_add) # '2023-09-21'
+            #print(f"New data{disea, new_data}")
+            if week_add == 0:
+                break
+            if check_year(new_data):
+                ls.append(new_data)
+                ls.append(disea)
+                #print(2)
+                date['date'].append(ls) # ['2004-', '']
+                dat = new_data
+                tp = n_tp
+            else:
+                break
+
+
     # for i, n in enumerate(rows):
     #     new_data = add_time(rows[i][3], time_vac([rows[i][4], rows[i][5]], date2), MONTH)
     #     if check_year(new_data):
@@ -251,11 +288,12 @@ def data_person(id):
     # date['date'] = date_p_sort
     # print(date)
     #
-    # sort_mounth(date)
+    sort_date = sort_mounth(date['date'])
+    date['date'] = sort_date[:]
     print(f"\n\n date{date}")
 
     return date
 
-d = data_person(1)
+d = data_person(4)
 
 
