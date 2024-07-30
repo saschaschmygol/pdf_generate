@@ -178,38 +178,42 @@ def data_person(id):
     print(lst_vac_work)
 
     cursor = conn.cursor()
-    cursor.execute(f"SELECT S.Имя, S.Фамилия, S.Отчество,  S.Пол, S.Дата_Рождения, W.Дата, W.Название_Прививки, W.Тип FROM Вакцинация as W, Сотрудник as S "
-                   f"INNER JOIN (SELECT Вакцинация.ID_Сотрудника, MAX(Вакцинация.Дата) as Дата, Вакцинация.Название_Прививки "
-                   f"FROM Вакцинация GROUP BY Вакцинация.ID_Сотрудника, Вакцинация.Название_Прививки HAVING Вакцинация.ID_Сотрудника = {id}) "
-                   f"as D ON (W.Дата = D.Дата) AND (W.ID_Сотрудника = D.ID_Сотрудника= S.ID);")
+    cursor.execute(f"SELECT MAX(Вакцинация.Дата) as Дата, Вакцинация.Название_Прививки, Вакцинация.Тип "
+                   f"FROM Вакцинация GROUP BY Вакцинация.ID_Сотрудника, Вакцинация.Название_Прививки "
+                   f"HAVING Вакцинация.ID_Сотрудника = {id}")
     rows = cursor.fetchall() #Получение результатов в виде кортежа ([], [], [])
     lst_vac = rows
     print(lst_vac)
 
-    date_of_birth = rows[0][4] #рассчет полных лет
+    cursor.execute(f"SELECT S.Имя, S.Фамилия, S.Отчество, S.Пол, S.Дата_Рождения FROM Сотрудник as S WHERE S.ID = {id};")
+    rows = cursor.fetchall()
+    pers_info = rows
+    print(pers_info)
+
+    date_of_birth = pers_info[0][4] #рассчет полных лет
     age = age_calculate(date_of_birth)
     print(age)
 
     date = {'name': None, 'date':[]}
-    date['name'] = lst_vac[0][0] + ' ' + lst_vac[0][1] + ' ' + lst_vac[0][2] #формируем имя в строку
+    date['name'] = pers_info[0][0] + ' ' + pers_info[0][1] + ' ' + pers_info[0][2] #формируем имя в строку
 
-    if lst_vac[0][3] == 'М':
+    if pers_info[0][3] == 'М':
         if 'Краснуха' in lst_vac_work:
             lst_vac_work.remove('Краснуха')
 
     lst_vac_priv = []
     for i in lst_vac:
-        lst_vac_priv.append(i[6])
+        lst_vac_priv.append(i[1])
     print(lst_vac_priv) #текущие прививки которые ставились раньше
 
     new_lst_vac = list(set(lst_vac_work) & set(lst_vac_priv)) # удаление нестандартных прививок, не отн к списку прививок в сфере раб. (за свой счет и т.д.)
     print(f"new_lst_vac {new_lst_vac}")
 
-    if lst_vac[0][3] == 'Ж':
+    if pers_info[0][3] == 'Ж':
         if ('Краснуха' in lst_vac_work) and (('Краснуха' not in new_lst_vac) and age > 25):
             lst_vac_work.remove('Краснуха') # удаляем краснуху из общего списка если >25 и не был привит
 
-    lst_vac_n = [i for  i in lst_vac if i[6] in new_lst_vac]
+    lst_vac_n = [i for  i in lst_vac if i[1] in new_lst_vac]
     print(lst_vac_n)                                          #оставляем только стандартные прививки для дальнейшего планирования
     new_lst_vac_work = list(set(lst_vac_work) - set(lst_vac_priv)) #список прививок для которых нужно начать схему вакцинации
     print(f"new_lst_vac_work {new_lst_vac_work}")
@@ -224,9 +228,9 @@ def data_person(id):
     #print(date2)  #{'Грипп':[0, 0, 1, 2, 3], ...}
 
     for i, n in enumerate(lst_vac_n):
-        tp: str = n[7] # 'RV'
-        disea = n[6]  # 'Грипп'
-        dat = n[5] # 2023-02-02
+        tp: str = n[2] # 'RV'
+        disea = n[1]  # 'Грипп'
+        dat = n[0] # 2023-02-02
         #print(tp, disea, dat)
         while True:
             lst = []
@@ -294,6 +298,5 @@ def data_person(id):
 
     return date
 
-d = data_person(4)
-
+d = data_person(1)
 
